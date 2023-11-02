@@ -63,6 +63,19 @@ strip_slash(){
     echo "$s"
     }
 
+bilateral_strip_slash(){
+    # Strips single slashes from the beginning and end of a string
+    # Echoes result.
+    local s="$1"
+    if streq "${s:0:1}" "/" ; then
+        s="${s:1}"
+    fi
+    if streq "${s: -1}" "/" ; then
+        s="${s:0:${#s}-1}"
+    fi
+    echo "$s"
+    }
+
 fullpath(){
     # Echoes the full path to a file/directory.
     # Useful if realpath is not installed.
@@ -184,6 +197,80 @@ remote-ls-root(){
             echo $line
         fi
     done
+    }
+
+_remote-ls-wildcard(){
+    local prefix="$1"; shift 1
+    local curr="$1"; shift 1
+    local components=("$@"); shift 1
+    local ncomponents=${#components[@]}
+
+    # echo "components=${components[@]}"
+
+    local i=0
+    while test $i -lt $ncomponents && ! [[ ${components[$i]} == *['['']''}''{''!'@#\$%^\&*()+]* ]]; do
+        curr="$curr/${components[$i]}"
+        ((i++))
+    done
+
+    local inext=$((i+1))
+
+    if test $i -eq $ncomponents; then
+        # There were no stars in the pattern; just echo the current path, if it exists
+        if remote-exists "$prefix/$curr"; then
+            echo "$prefix/$curr"
+        fi
+        return
+    fi
+
+    # Pop off all components that have been moved to $curr
+    local pat="${components[$i]}"
+    local remaining_components="${components[@]:$inext}"
+
+    # echo "curr=$curr i=$i pat=$pat remaining_components=${remaining_components[@]}"
+
+    # Get directory contents of $curr
+    for f in $(xrdfs $prefix ls $curr ); do
+        # For every node that matches the current component, resolve the rest of the 
+        # pattern
+        local b=$(basename $f)
+        # echo "Comparing $b with $pat"
+        if [[ $b == $pat ]]; then
+            # It's a match
+            if test $inext -eq $ncomponents; then
+                # If there are no further components, this is a final match
+                echo "$prefix/$f"
+            else
+                # There are further things to match
+                _remote-ls-wildcard "$prefix" "$f" "${remaining_components[@]}"
+            fi
+        fi
+    done
+    }
+
+remote-ls-wildcard(){
+    # Like xrdfs ... ls ..., but accepts wildcards and other patterns
+    # 
+    # Example:
+    # remote-ls-wildcard root://cmseos.fnal.gov//store/user/klijnsma/package_test_files/dev-stars/bar[ab]/file*.txt
+    # root://cmseos.fnal.gov//store/user/klijnsma/package_test_files/dev-stars/bara/file1.txt
+    # root://cmseos.fnal.gov//store/user/klijnsma/package_test_files/dev-stars/bara/file2.txt
+    # root://cmseos.fnal.gov//store/user/klijnsma/package_test_files/dev-stars/barb/file2.txt
+    # root://cmseos.fnal.gov//store/user/klijnsma/package_test_files/dev-stars/barb/file3.txt
+    # 
+    # Echoes results.
+    local input="$1"
+    remote-split $input
+    local prefix="${res[0]}"
+    local starpath="${res[1]}"
+    starpath=$(bilateral_strip_slash "$starpath")
+    # Split on "/"
+    local components
+    IFS="/" read -ra components <<< $starpath
+    # echo "prefix=$prefix"
+    # echo "starpath=$starpath"
+    # echo "components=${components[@]}"
+    _remote-ls-wildcard "$prefix" "" "${components[@]}"
     }
 
 # ______________________________________________________________________________________
@@ -381,23 +468,41 @@ runstep(){
 # ______________________________________________________________________________________
 # TreeMaker interface
 
-process_rootfile(){
+make_dst_treemaker(){
     local rootfile="$1"
     local dstdir="$2"
 
     # Determine destination
     if is-remote "$dstdir"; then
         # If dstdir is remote, just put basename $rootfile in it
-        local dst="$(strip_slash $dstdir)/$(basename $rootfile)"
+        res="$(strip_slash $dstdir)/$(basename $rootfile)"
     else
         # Else, replace the substring "MINIAOD" in $rootfile with $dstdir
-        local dst="${rootfile//MINIAOD/$dstdir}"
+        res="${rootfile//MINIAOD/$dstdir}"
     fi
+    }
+
+process_rootfile(){
+    local rootfile="$1"
+    local dstdir="$2"
+    make_dst_treemaker $rootfile $dstdir; local dst="$res"
     
     log "Processing $rootfile -> $dst"
 
     local local_rootfile="local.root"
     local local_dst="output_RA2AnalysisTree.root"
+
+    # Remove any pre-existing files that get in the way of xrootd
+    if test $DRYMODE -eq 0 ; then
+        if test -f "$local_dst"; then
+            log "Removing existing ${local_dst}"
+            rm $local_dst || true
+        fi
+        if test -f "$local_rootfile"; then
+            log "Removing existing ${local_rootfile}"
+            rm $local_rootfile || true
+        fi
+    fi
 
     if test $DRYMODE -eq 0 && remote-exists $dst ; then
         log "$dst already exists, skipping"
@@ -528,6 +633,7 @@ treemaker(){
     done
     res=0
     }
+
 
 # ______________________________________________________________________________________
 # Job script
@@ -700,6 +806,8 @@ main(){
         svjprod $@
     elif streq "$script" "treemaker"; then
         treemaker $@
+    elif streq "$script" "ls"; then
+        remote-ls-wildcard $@
     else
         error "Invalid command: $script"
     fi

@@ -50,11 +50,12 @@ log = htcondor.log
 on_exit_hold = (ExitBySignal == true) || (ExitCode != 0)
 output = out_$(Year)_$(Month)_$(Day)_$(Cluster)_$(Process).txt
 universe = vanilla
+args = svj mz=$(MZ) rinv=$(RINV) mdark=$(MDARK) alpha=$(ALPHA) part=$(PART) nevents=$(NEVENTS) dst=$(DST) svjprodtarball=$(SVJPRODTARBALL)
 
-SVJPRODTARBALL = root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/svjproductiontarballs/CMSSW_10_6_29_patch1_svjprod_el7_2018UL_cms-svj_Run2_UL_withHLT_996c8dc_Jan18.tar.gz
+SVJPRODTARBALL = root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/svjproductiontarballs/CMSSW_10_6_29_patch1_svjprod_cms-svj_Run2_UL_20231103_withHLT.tar.gz
 DST = root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/my_output/
 
-# Set physics model parameters
+# Set benchmark physics model parameters
 NEVENTS = 500
 PART = 100000
 MZ = 450
@@ -64,14 +65,18 @@ ALPHA = peak
 NEVENTS = 500
 PART = 10000
 
-args = svj mz=$(MZ) rinv=$(RINV) mdark=$(MDARK) alpha=$(ALPHA) part=$(PART) nevents=$(NEVENTS) dst=$(DST) svjprodtarball=$(SVJPRODTARBALL)
-
 # Queue 100 jobs. The ProcID of the job will be added to the 'part' number to ensure the jobs are unique.
 queue 100
 
-# Submit another 100 jobs, with the same physics model parameters except mdark:
-MDARK = 5
-queue 100
+# Submit a 1D scan over rinv. Make sure to reset RINV to its benchmark value afterwards.
+# 100 jobs per rinv value are submitted.
+queue 100 RINV in (0.0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)
+RINV = 0.3
+
+# Submit a 1D scan over mdark
+queue 100 MDARK in (1,5,10)
+
+# Etc.
 ```
 
 Here is an example submission file to create TreeMaker ntuples from MINIAOD files:
@@ -93,3 +98,23 @@ args = treemaker infile=$(INFILE) nperjob=$(NPERJOB) dst=$(DST) treemakertarball
 # Queue as many jobs as you need to cover all rootfiles in your INFILE.
 queue 384
 ```
+
+
+## Experimental
+
+A common mishap is that a part of you TreeMaker jobs fail.
+In that case, you only want to resubmit jobs for the failed MINIAOD -> TreeMaker cases,
+and you need to know which MINIAOD files still need to ntupled.
+The script [prep_treemaker_infile.sh](prep_treemaker_infile.sh) is a utility to compute this list:
+
+```bash
+bash prep_treemaker_infile.sh \
+    dst=TREEMAKER_v01 \
+    miniaod=root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/signal_production_2023/MINIAOD/*/*.root \
+    > missing.txt
+```
+
+The script will subtract all existing ntuples from the list of all needed ntuples, and
+return a list of all MINIAOD files that still need to be ntupled.
+
+This script is experimental and will probaby contain some gotcha's.

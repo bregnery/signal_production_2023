@@ -102,9 +102,9 @@ queue 384
 
 ## Experimental
 
-A common mishap is that a part of you TreeMaker jobs fail.
+A common mishap is that a part of your TreeMaker jobs fail.
 In that case, you only want to resubmit jobs for the failed MINIAOD -> TreeMaker cases,
-and you need to know which MINIAOD files still need to ntupled.
+so you need to know which MINIAOD files still need to ntupled.
 The script [prep_treemaker_infile.sh](prep_treemaker_infile.sh) is a utility to compute this list:
 
 ```bash

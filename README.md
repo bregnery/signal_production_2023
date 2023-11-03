@@ -11,7 +11,7 @@ These scripts should work both on an interactive node as well as in a job.
 ```bash
 bash svj.sh \
     # Tell the script to run the gridpack -> MINIAOD chain, "svj"
-    svj \  
+    svjprod \  
     # Point to the SVJProductions tarball to use
     svjprodtarball=root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/svjproductiontarballs/CMSSW_10_6_29_patch1_svjprod_el7_2018UL_cms-svj_Run2_UL_withHLT_996c8dc_Jan18.tar.gz \ 
     # Set where to store the output files
@@ -50,7 +50,7 @@ log = htcondor.log
 on_exit_hold = (ExitBySignal == true) || (ExitCode != 0)
 output = out_$(Year)_$(Month)_$(Day)_$(Cluster)_$(Process).txt
 universe = vanilla
-args = svj mz=$(MZ) rinv=$(RINV) mdark=$(MDARK) alpha=$(ALPHA) part=$(PART) nevents=$(NEVENTS) dst=$(DST) svjprodtarball=$(SVJPRODTARBALL)
+args = svjprod mz=$(MZ) rinv=$(RINV) mdark=$(MDARK) alpha=$(ALPHA) part=$(PART) nevents=$(NEVENTS) dst=$(DST) svjprodtarball=$(SVJPRODTARBALL)
 
 SVJPRODTARBALL = root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/svjproductiontarballs/CMSSW_10_6_29_patch1_svjprod_cms-svj_Run2_UL_20231103_withHLT.tar.gz
 DST = root://cmseos.fnal.gov//store/user/lpcdarkqcd/boosted/my_output/

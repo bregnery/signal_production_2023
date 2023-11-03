@@ -393,7 +393,8 @@ svjcommand(){
         "rinv=${physics[1]}" \
         "inpre=$instep" \
         "boost=${physics[2]}" \
-        "boostvar=madpt"
+        "boostvar=madpt" \
+        "indir=$PWD"
         )
     if streq $instep "step0_GRIDPACK" ; then
         res+=("maxEventsIn=10000")
@@ -792,6 +793,7 @@ main(){
     ls -al
     export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch/
     source /cvmfs/cms.cern.ch/cmsset_default.sh
+    echo "arguments: svj.sh $@"
     echo "---------------------------------------------------"
     local tstart=$(date +%s.%N)
 
@@ -824,6 +826,7 @@ main(){
     local runtime=$(echo "$(date +%s.%N) - $tstart" | bc)
     local runtime_hours=$( echo "$runtime / 3600." | bc -l )
     echo "Total runtime: $runtime seconds / $runtime_hours hours"
+    return $exitcode
     }
 
 # Allow the code to be sourced without running anything

@@ -383,6 +383,7 @@ svjcommand(){
     res=(\
         "cmsRun runSVJ.py" \
         "year=${physics[5]}" \
+        "syst=1" \
         "madgraph=1" \
         "channel=s" \
         "outpre=$outstep" \

@@ -1,3 +1,4 @@
+echo "Warning: Run this on the LPC only, otherwise too slow"
 source svj.sh source
 
 base=root://cmseos.fnal.gov//store/user/lpcsusyhad/SusyRA2Analysis2015/Run2ProductionV20
@@ -18,10 +19,10 @@ list_dirs(){
 dirs=( $(list_dirs) )
 
 # For testing only:
-dirs=( "${dirs[@]:3:10}" )
+# dirs=( "${dirs[@]:3:10}" )
 
-echo "Looking for .root files in ${#dirs[@]} remote directories"
+echo "Looking for .root files in ${#dirs[@]} remote directories, using 8 concurrent processes. Output in bkg.txt."
 
 {
     printf "%s\n" "${dirs[@]}" | xargs -i -P 8 -n 1 bash -c 'source svj.sh source; remote-ls-wildcard {}/*.root'
-} > test.txt
+} >> bkg.txt

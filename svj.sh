@@ -528,6 +528,7 @@ process_rootfile(){
         "nestedVectors=False" \
         "debugjets=0" \
         "splitLevel=99" \
+        "jetsconstituents=2" \
         "boostedsemivisible=1" \
         "dataset=file:${local_rootfile}"\
         )
